@@ -1,6 +1,8 @@
 package simpleapi2.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
@@ -8,9 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.web.client.RestTemplate;
 import simpleapi2.dto.user.UserDTO;
 import simpleapi2.entity.user.UserEntity;
 import simpleapi2.service.user.UserService;
@@ -29,14 +33,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(UserController.class)
 class UserControllerUnitTest {
 
-    private UserDTO userDTO;
-    private UserEntity userEntity;
-
     @Autowired
     private MockMvc mvc;
 
     @MockBean
     private UserService userService;
+
+    private UserDTO userDTO;
+    private UserEntity userEntity;
 
     @BeforeEach
     void setUp() {
@@ -46,6 +50,7 @@ class UserControllerUnitTest {
         userDTO.setUsername("test DTO");
         userDTO.setEmail("test@test.com");
         userDTO.setAddress("test address");
+        userDTO.setLoyalty(10);
 
         userEntity = new UserEntity();
         userEntity.setUsername("test Entity");

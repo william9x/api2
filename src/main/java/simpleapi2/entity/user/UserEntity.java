@@ -1,5 +1,6 @@
 package simpleapi2.entity.user;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 

@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import simpleapi2.dto.user.LoyaltyDTO;
 import simpleapi2.dto.user.UserDTO;
 import simpleapi2.entity.user.UserEntity;
 import simpleapi2.repository.user.IUserRepository;
@@ -20,8 +21,8 @@ public class UserService implements IUserService {
 
     private final String URL_LOYALTY = "http://localhost:8081/api/loyalty/";
 
-    private RestTemplate restTemplate = new RestTemplate();
-
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Autowired
     private IUserRepository userRepository;
@@ -147,17 +148,20 @@ public class UserService implements IUserService {
 
     private Integer getUserLoyalty(String userId) {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authentication", "simple_api_key_for_authentication");
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authentication", "simple_api_key_for_authentication");
+            headers.set("Accept", "application/json");
 
-        HttpEntity<?> entity = new HttpEntity<>(headers);
+            HttpEntity<?> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<Integer> response = restTemplate.exchange(URL_LOYALTY + userId,
-                HttpMethod.GET, entity, Integer.class);
+            ResponseEntity<LoyaltyDTO> response = restTemplate.exchange(
+                    URL_LOYALTY + userId, HttpMethod.GET, entity, LoyaltyDTO.class);
 
-        if (null == response.getBody()) return 0;
-        else {
-            return response.getBody();
+            return response.getBody().getPoint();
+
+        } catch (Exception e){
+            return 0;
         }
     }
 
