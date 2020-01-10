@@ -1,7 +1,9 @@
 package simpleapi2.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
@@ -11,6 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import simpleapi2.Api2Application;
@@ -22,9 +26,9 @@ import simpleapi2.repository.user.IUserRepository;
 import java.text.ParseException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static org.springframework.http.MediaType.TEXT_PLAIN_VALUE;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = Api2Application.class)
 @AutoConfigureMockMvc
@@ -41,31 +45,38 @@ class UserControllerItegrationTest {
         MockitoAnnotations.initMocks(this);
     }
 
+    @Rule
+    public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().port(8888));
+
     @Test
     void testUpdateUser() throws Exception {
 
         createTestUser("email@1.com", "username1");
 
-        UserUpdateRequest req = new UserUpdateRequest();
-        req.setEmail("update@email.com");
-        req.setAddress("test");
+        UserUpdateRequest updateRequest = new UserUpdateRequest();
+        updateRequest.setEmail("update@email.com");
+        updateRequest.setAddress("test");
 
-        mvc.perform(put("/api/users/username1")
+        MockHttpServletRequestBuilder req = MockMvcRequestBuilders.put("/api/users/username1")
                 .header("Authentication", "simple_api_key_for_authentication")
-                .content(asJsonString(req))
-                .contentType(MediaType.APPLICATION_JSON))
+                .content(asJsonString(updateRequest))
+                .contentType(MediaType.APPLICATION_JSON);
+
+        mvc.perform(req)
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data.email").value(req.getEmail()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data.address").value(req.getAddress()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data.email").value(updateRequest.getEmail()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data.address").value(updateRequest.getAddress()))
                 .andDo(MockMvcResultHandlers.print());
     }
 
     @Test
     void testGetAllUser() throws Exception {
 
-        mvc.perform(get("/api/users")
+        MockHttpServletRequestBuilder req = MockMvcRequestBuilders.get("/api/users")
                 .header("Authentication", "simple_api_key_for_authentication")
-                .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON);
+
+        mvc.perform(req)
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.data").isNotEmpty())
                 .andDo(MockMvcResultHandlers.print());
@@ -73,38 +84,55 @@ class UserControllerItegrationTest {
 
     @Test
     void testGetUser() throws Exception {
+        WireMockServer wireMockServer = new WireMockServer();
+        configureFor("localhost", 8090);
 
-        mvc.perform(get("/api/users/username1")
+        stubFor(get(urlEqualTo("/api/loyalty/username1"))
+                .willReturn(aResponse()
+                        .withHeader("Authentication", "simple_api_key_for_authentication")
+                        .withBody("Welcome to Baeldung!")));
+
+        wireMockServer.start();
+
+        MockHttpServletRequestBuilder req = MockMvcRequestBuilders.get("/api/users/username1")
                 .header("Authentication", "simple_api_key_for_authentication")
-                .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON);
+
+        mvc.perform(req)
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.data.username").value("username1"))
                 .andDo(MockMvcResultHandlers.print());
+
+        wireMockServer.stop();
     }
 
     @Test
     void testCreateUser() throws Exception {
 
-        UserSignUpRequest req = new UserSignUpRequest();
-        req.setUsername("testCreateUser");
-        req.setEmail("test@CreateUser.com");
-        req.setAddress("testCreateUser");
+        UserSignUpRequest signUpRequest = new UserSignUpRequest();
+        signUpRequest.setUsername("testCreateUser");
+        signUpRequest.setEmail("test@CreateUser.com");
+        signUpRequest.setAddress("testCreateUser");
 
-        mvc.perform(post("/api/users")
+        MockHttpServletRequestBuilder req = MockMvcRequestBuilders.post("/api/users")
                 .header("Authentication", "simple_api_key_for_authentication")
-                .content(asJsonString(req))
-                .contentType(MediaType.APPLICATION_JSON))
+                .content(asJsonString(signUpRequest))
+                .contentType(MediaType.APPLICATION_JSON);
+
+        mvc.perform(req)
                 .andExpect(status().isCreated())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data.username").value(req.getUsername()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.data.username").value(signUpRequest.getUsername()))
                 .andDo(MockMvcResultHandlers.print());
     }
 
     @Test
     void testDeleteUser() throws Exception {
 
-        mvc.perform(delete("/api/users/username1")
+        MockHttpServletRequestBuilder req = MockMvcRequestBuilders.delete("/api/users/username1")
                 .header("Authentication", "simple_api_key_for_authentication")
-                .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON);
+
+        mvc.perform(req)
                 .andExpect(status().isOk())
                 .andDo(MockMvcResultHandlers.print());
     }
@@ -128,13 +156,13 @@ class UserControllerItegrationTest {
         }
     }
 
-    private void setupMockServer(){
+    private void setupMockServer(String userId) {
         WireMockRule wireMockRule = new WireMockRule((8081));
-        wireMockRule.stubFor(get(urlEqualTo("/api/resource/"))
+        wireMockRule.stubFor(get(urlEqualTo("/api/" + userId + "/loyalty"))
                 .willReturn(aResponse()
                         .withStatus(HttpStatus.OK.value())
-                        .withHeader("Content-Type", TEXT_PLAIN_VALUE)
-                        .withBody("test")));
+                        .withHeader("Authentication", "simple_api_key_for_authentication")
+                        .withBody("10")));
 
     }
 }
